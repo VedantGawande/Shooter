@@ -1,12 +1,11 @@
-import pygame,sys,os
-import math
+import pygame,sys
 from laser import Laser
 import  obstacles
 
 class Gun(pygame.sprite.Sprite):
     def __init__(self,pos):
         super().__init__()
-        self.image = pygame.image.load('shotgun.png').convert_alpha()
+        self.image = pygame.image.load('graphics/shotgun.png').convert_alpha()
         self.image = pygame.transform.flip(pygame.transform.scale(self.image,(100,20)), False,True)
         self.rect = self.image.get_rect(center = pos)
         
@@ -57,7 +56,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self,gravity):
         super().__init__()
         #player init
-        self.image = pygame.image.load('player_2.png')
+        self.image = pygame.image.load('graphics/player_2.png')
         self.rect = self.image.get_rect(center= (screen_width/2, screen_height/2))
         
         #gun init
@@ -130,7 +129,7 @@ def game_over():
     if keys[pygame.K_SPACE]:
         lives= 5
 
-        player_sprite.image = pygame.image.load('player_1.png')
+        player_sprite.image = pygame.image.load('graphics/player_1.png')
         player_sprite.rect.center = (screen_width/2, screen_height/2)
 
         if int(high_score) < score:
@@ -159,7 +158,7 @@ if __name__ == '__main__':
     # Player
     player_sprite = Player(10)
     player = pygame.sprite.GroupSingle(player_sprite)
-    player_dead = pygame.image.load('player_dead.png')
+    player_dead = pygame.image.load('graphics/player_dead.png')
 
     # Obstacle
     obstacles_group = pygame.sprite.Group()
@@ -168,11 +167,18 @@ if __name__ == '__main__':
     obs_num = 2
     pygame.time.set_timer(spawn_obstacle,obstacle_timer)
 
+    spritesheet = obstacles.Spritesheet('graphics/blast_2.png')
+    spritesheet.sheet= pygame.transform.scale(spritesheet.sheet, (1024,768))
+    frames = []
+    for row in range(8):
+        for column in range(6):
+            frames.append(spritesheet.get_image(column * 128, row*128, 128, 128))
+
     blast_sprites = pygame.sprite.Group()
 
     #Sound
     pygame.mixer.init()
-    blast = pygame.mixer.Sound('blast.wav')
+    blast = pygame.mixer.Sound('sound/blast.wav')
 
     # Read score
     with open('high_score.txt') as h:
@@ -190,7 +196,7 @@ if __name__ == '__main__':
     # Ammo
     max_bullets = 2
     bullet_left = max_bullets - len(player_sprite.gun_sprite.lasers)
-    ammo_img = pygame.transform.rotate(pygame.image.load('bullet.png').convert_alpha(), 90)
+    ammo_img = pygame.transform.rotate(pygame.image.load('graphics/bullet.png').convert_alpha(), 90)
 
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -219,7 +225,7 @@ if __name__ == '__main__':
                     if collision(obstacle, laser):
                         # obs_num += 0.1
                         score += 10
-                        blast_sprites.add(obstacles.Blast(obstacle.rect.topleft))
+                        blast_sprites.add(obstacles.Blast(obstacle.rect.topleft,frames))
                         obstacle.destroy()
                         laser.kill()
                         blast.play(0,0,0)

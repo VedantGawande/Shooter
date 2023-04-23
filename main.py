@@ -1,6 +1,7 @@
 import pygame,sys
 from laser import Laser
 import  obstacles
+from random import choice
 
 class Gun(pygame.sprite.Sprite):
     def __init__(self,pos):
@@ -80,10 +81,20 @@ class Player(pygame.sprite.Sprite):
         self.direction.y += self.gravity
         self.rect.y += self.direction.y
 
+    def friction(self, direction):
+        if self.rect.x != 0:
+            self.rect.x += direction.x * -1
+        
+        self.rect.y += direction.y * -1
+
     def recoil(self, direction):
         self.direction = direction *-1
     
     def off_screen(self):
+        '''
+        If player is out of the screen
+        telports player to oppostie side
+        '''
         if self.rect.y >= screen_height:
             self.rect.y = -60
             self.direction.y = 0.5
@@ -95,18 +106,13 @@ class Player(pygame.sprite.Sprite):
         elif self.rect.x <= -60:
             self.rect.x = screen_width
 
-    def friction(self, direction):
-        if self.rect.x != 0:
-            self.rect.x += direction.x * -1
-        
-        self.rect.y += direction.y * -1
 
     def update(self):
         # self.friction(self.direction)
         self.rect.x += self.direction.x * self.speed
         self.rect.y += self.direction.y * self.speed
 
-        self.move_player()
+        # self.move_player()
         self.off_screen()
         self.gun.draw(screen)
         self.gun.update()
@@ -119,6 +125,9 @@ def collision(sprite_1, sprite_2):
 
 def game_over():
     global lives, high_score,score
+    player_sprite.image.set_alpha(1000)
+
+    bg_music.fadeout(1000)
 
     game_over_surf = font.render('GAME OVER! Press Space', False, (255,100,155))
     game_over_rect = game_over_surf.get_rect(center=(screen_width/2,screen_height/2))
@@ -126,10 +135,10 @@ def game_over():
 
     keys = pygame.key.get_pressed()
 
-    if keys[pygame.K_SPACE]:
+    if keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]:
         lives= 5
 
-        player_sprite.image = pygame.image.load('graphics/player_1.png')
+        player_sprite.image = pygame.image.load('graphics/player_2.png')
         player_sprite.rect.center = (screen_width/2, screen_height/2)
 
         if int(high_score) < score:
@@ -140,6 +149,7 @@ def game_over():
             high_score = h.read()
             h.close()
         score = 0
+        bg_music.play(-1,fade_ms=800)
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -153,12 +163,17 @@ if __name__ == '__main__':
     pygame.display.set_caption("My Game")
     FPS = 60
     pygame.font.init()
-    font = pygame.font.SysFont('arialblack', int(0.04*screen_height))
+    font = pygame.font.SysFont('couriernew', int(0.04*screen_height))
 
     # Player
     player_sprite = Player(10)
     player = pygame.sprite.GroupSingle(player_sprite)
-    player_dead = pygame.image.load('graphics/player_dead.png')
+    player_dead = pygame.image.load('graphics/player_dead_2.png')
+    player_dead_2 = pygame.image.load('graphics/player_dead.png')
+    player_default = pygame.image.load('graphics/player_2.png')
+    player_hit_time = 0
+    invisible = False
+    invisible_time =  1500 # milliseconds
 
     # Obstacle
     obstacles_group = pygame.sprite.Group()
@@ -179,6 +194,8 @@ if __name__ == '__main__':
     #Sound
     pygame.mixer.init()
     blast = pygame.mixer.Sound('sound/blast.wav')
+    bg_music = pygame.mixer.Sound('sound/stranger-things-124008.wav')
+    hit = pygame.mixer.Sound('sound/hit2.wav')
 
     # Read score
     with open('high_score.txt') as h:
@@ -190,18 +207,20 @@ if __name__ == '__main__':
     score_surf = font.render(str(score),True, (200,180,210))
     high_score_surf = font.render(str(high_score),True, (100,180,210))
 
-    lives = 1
+    lives = 5
     lives_surf = font.render(str(lives),True, 'red')
 
     # Ammo
     max_bullets = 2
     bullet_left = max_bullets - len(player_sprite.gun_sprite.lasers)
     ammo_img = pygame.transform.rotate(pygame.image.load('graphics/bullet.png').convert_alpha(), 90)
-
+    bg_music.play(-1,fade_ms=800)
     # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     while True:
         clock.tick(FPS)
+        player_sprite.image=player_default
+        current_time = pygame.time.get_ticks()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -219,6 +238,7 @@ if __name__ == '__main__':
         screen.fill((30,30,30))
 
         if lives >0:
+            
             # collision
             for obstacle in obstacles_group:
                 for laser in player_sprite.gun_sprite.lasers:
@@ -226,13 +246,15 @@ if __name__ == '__main__':
                         # obs_num += 0.1
                         score += 10
                         blast_sprites.add(obstacles.Blast(obstacle.rect.topleft,frames))
-                        obstacle.destroy()
+                        obstacle.kill()
                         laser.kill()
                         blast.play(0,0,0)
 
-                if collision(obstacle, player_sprite):
+                if collision(obstacle, player_sprite) and not invisible:
+                    player_hit_time = pygame.time.get_ticks()
+                    hit.play()
                     lives -= 1
-                    obstacle.destroy()
+                    obstacle.kill()
 
         else:
             # Game Over
@@ -241,6 +263,17 @@ if __name__ == '__main__':
             obstacles_group.empty()
             game_over()
         
+        # invisibility for 1.5 sec after getting hit by obstacle
+        if current_time - player_hit_time < invisible_time and current_time - player_hit_time > 0 and lives > 0:
+            player_sprite.image.set_alpha(choice([100, 1000]))
+            
+            invisible = True
+        else:
+            invisible = False
+            player_sprite.image.set_alpha(1000)
+        # tex_surf = font.render(f'{invisible} {current_time - player_hit_time}', False,'red')
+        # screen.blit(tex_surf, (10,screen_height-90))
+
         # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         #ammo display

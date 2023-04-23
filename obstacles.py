@@ -16,7 +16,7 @@ class Obstacle(pygame.sprite.Sprite):
     def __init__(self, x,y,  screen_width, screen_height):
         super().__init__()
         self.speed = randint(3,9)
-        self.spritesheet = Spritesheet('rock_2.png')
+        self.spritesheet = Spritesheet('graphics/rock_2.png')
         self.frame_duration = 5*self.speed
         self.num_frames = 32
 
@@ -59,18 +59,14 @@ class Blast(pygame.sprite.Sprite):
     '''
     '''
 
-    def __init__(self, pos):
+    def __init__(self, pos,frames):
         super().__init__()
-        self.spritesheet = Spritesheet('blast_2.png')
-        self.spritesheet.sheet= pygame.transform.scale(self.spritesheet.sheet, (1024,768))
         self.frame_duration = 40
         self.num_frames = 48
 
-        self.frames = []
-        for row in range(8):
-            for column in range(6):
-                self.frames.append(self.spritesheet.get_image(column * 128, row*128, 128, 128))
+        
         self.current_frame = 0
+        self.frames = frames
         self.image = self.frames[0]
         self.last_update_time = pygame.time.get_ticks()
         self.rect = self.image.get_rect(topleft = pos)
@@ -93,6 +89,12 @@ if __name__ == '__main__':
     obstacles = pygame.sprite.Group()
     blast_sprites = pygame.sprite.RenderPlain()
     BG = (50,50,50)
+    spritesheet = Spritesheet('graphics/blast_2.png')
+    spritesheet.sheet= pygame.transform.scale(spritesheet.sheet, (1024,768))
+    frames = []
+    for row in range(8):
+        for column in range(6):
+            frames.append(spritesheet.get_image(column * 128, row*128, 128, 128))
 
     while True:
         for event in pygame.event.get():
@@ -106,7 +108,7 @@ if __name__ == '__main__':
                         obstacles.add(Obstacle(x,y, 800,800))
                 if event.key == pygame.K_BACKSPACE:
                     for obstacle in obstacles:
-                        blast_sprites.add(Blast(obstacle.rect.topleft))
+                        blast_sprites.add(Blast(obstacle.rect.topleft,frames))
                         obstacle.kill()
         screen.fill(BG)
 
